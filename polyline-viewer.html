@@ -1,0 +1,465 @@
+<!--   MIT License
+
+  Copyright (c) 2022 Vesa Vlad
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE. -->
+<!doctype html>
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Decode & visualize encoded polylines on OpenStreetMaps</title>
+        <meta content="Online tool to visualize, decode and edit polylines using Leaflet and OpenStreetMap"
+              name="description">
+        <meta content="Vesa Vlad" name="author">
+        <meta content="polyline editor decode encode" name="keywords">
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <meta content="Decode & visualize encoded polylines on OpenStreetMaps" property="og:title"/>
+        <meta content="Online tool to visualize, decode and edit polylines using Leaflet and OpenStreetMap"
+              property="og:description"/>
+
+        <meta content="summary" name="twitter:card"/>
+        <meta content="@vladvesa" name="twitter:site"/>
+        <meta content="Polyline Decoder" name="twitter:title"/>
+        <meta content="Decode & visualize encoded polylines on OpenStreetMaps" name="twitter:description"/>
+        <meta content="Decode & visualize encoded polylines on OpenStreetMaps" name="twitter:image:alt"/>
+        <link crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+              integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w=="
+              referrerpolicy="no-referrer" rel="stylesheet"/>
+
+        <link crossorigin="" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet"/>
+        <script crossorigin="" src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+
+        <script src='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.js'></script>
+        <link href='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.css' rel='stylesheet'/>
+
+        <link href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" rel="stylesheet"/>
+        <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
+
+        <script src="https://unpkg.com/@mapbox/polyline@1.1.1/src/polyline.js"></script>
+
+        <style media="screen">
+            body {
+                height: 100vh;
+                font-family: ".SF NS Mono", "Helvetica Neue", Arial, Helvetica, sans-serif;
+            }
+
+            main {
+                height: 100vh;
+                display: flex;
+                flex-direction: row;
+            }
+
+            header {
+                height: 7rem;
+            }
+
+            #map {
+                width: 75%;
+                height: 100%;
+            }
+
+            #control {
+                width: 25%;
+            }
+
+            .tabs {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-evenly;
+                align-content: center;
+                margin: 10px;
+            }
+
+            .tabs a {
+                flex: 0 1 33%;
+                max-width: 100%;
+                text-align: center;
+                display: block;
+                padding: 10px 30px;
+                align-content: center;
+                text-decoration: none;
+                cursor: pointer;
+                color: white;
+                font-weight: bold;
+                box-sizing: border-box;
+            }
+
+            .tabs a.active {
+                border-bottom: 5px solid #006BA6;
+            }
+
+            .tabs a:first-child {
+                background-color: #0496FF;
+            }
+
+            .tabs a:nth-child(2) {
+                background-color: #FFBC42;
+                color: #333;
+            }
+
+            .tabs a:nth-child(3) {
+                background-color: #D81159;
+            }
+
+            .io {
+                box-sizing: border-box;
+                width: calc(100% - 20px);
+                height: 300px;
+                margin: 10px;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+
+            #io-pre, #io-post {
+                height: 200px;
+            }
+
+            #error {
+                margin: 10px;
+                color: red;
+            }
+
+            .examples {
+                margin: 10px;
+            }
+            .section {
+                margin-bottom: 20px;
+            }
+            .section .section-title {
+                margin-left: 10px;
+                color: #9a9a9a;
+            }
+        </style>
+    </head>
+
+    <body>
+        <main>
+            <div id="map">
+
+            </div>
+            <div id="control">
+                <div class="tabs">
+                    <a class="tab active" href="#" onclick="changeCurInputMode(0);">Encoded</a>
+                    <a class="tab" href="#" onclick="changeCurInputMode(1);">LatLng</a>
+                    <a class="tab" href="#" onclick="changeCurInputMode(2);">LngLat</a>
+                </div>
+                <div class="section">
+                    <span class="section-title">Full</span>
+                    <textarea autofocus class="io" id="io" placeholder="paste full encoded polyline here"></textarea>
+                </div>
+                <div class="section">
+                    <span class="section-title">Pre</span>
+                    <textarea autofocus class="io" id="io-pre" placeholder="paste pre encoded polyline here"></textarea>
+                </div>
+                <div class="section">
+                    <span class="section-title">Post</span>
+                    <textarea autofocus class="io" id="io-post" placeholder="paste post encoded polyline here"></textarea>
+                </div>
+                <p id="error"></p>
+                <p class="examples">
+                    Examples: <a href="#" onclick="setCurPolyline('qpbvG__y`C{ApIk@tC_@xB??Ib@CJYlAo@lCiA|DITqArDUf@OZKLm@bAMV[p@]t@MT??IPi@lAEDUPOFM@MBGDKFIJGJIRCJEJOx@CHKTEDk@Pe@LwD~@aL~C??cAZoFzAu@P??gAZoDbAoCt@wCz@cL|C??mA\\gCt@cDx@iIdC{@Vq@N??eEdACFELCLEV?N?HBNPvA??lBzNFb@Nr@tB~IfA`E??\\vA`ErO`A~D`AdE??Pr@Lf@lA~ErAfFdAbEn@`C??Vz@Nl@r@bDfBnHPn@pClH??^`AHXbAlDbB~GFXT~AFr@D~@@hA?bAC`@KxAG`@SbAy@nDMd@M^KR_@d@[\\_@^??iDdDSRqAxAeFlF??_A~@}E`FuFvD{CjBmAx@??q@b@EJCLAJ@LDX^v@l@lAPZj@r@hEdEDDLX\\dAVdANl@??zBbKlBfI??Np@@P?LE\\CFEHUNEB_KbGmHtEsDpBoC`BEDEJEPAL?NFv@');">trip
+                    polyline</a>
+                </p>
+                <p style="position: fixed; bottom: 0; background: rgba(33, 33, 33, 10%); padding: 10px; width: 100%">
+                    Built by <a href="https://twitter.com/vladvesa">Vlad Vesa</a> in 2022. <br>
+                    Relies on
+                    <a href="https://github.com/geoman-io/leaflet-geoman">leaflet-geoman</a>,
+                    <a href="http://leafletjs.com/">leaflet</a> and <a href="https://github.com/mapbox/polyline">polyline</a>.
+                </p>
+            </div>
+
+            <script type="text/javascript">
+                L.mapbox.accessToken = 'pk.eyJ1IjoidmxhZHZlc2EiLCJhIjoiY2s3amh4dXd4MDYweDNmcTgxcXoxajNsZiJ9.tQqzxmU5r2rge5QG-XwbKA';
+
+                function setupMap() {
+                    var map = L
+                        .map('map')
+                        .setView([45, 21], 4);
+
+                    L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=' + L.mapbox.accessToken, {
+                        attribution: '© <a href="https://www.mapbox.com/feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                        tileSize: 512,
+                        zoomOffset: -1
+                    }).addTo(map);
+
+
+                    map.pm.addControls({
+                        position: 'topleft',
+                        drawMarker: false,
+                        drawPolyline: true,
+                        drawRectangle: false,
+                        drawPolygon: false,
+                        drawCircle: false,
+                        cutPolygon: false,
+                        editMode: true,
+                        removalMode: true,
+                    });
+
+                    map.pm.setPathOptions({
+                        color: 'blue',
+                        width: 5,
+                    });
+
+                    return map;
+                }
+
+                var io = document.getElementById('io');
+                var ioPre = document.getElementById('io-pre');
+                var ioPost = document.getElementById('io-post');
+
+                var errOut = document.getElementById('error');
+                var map = setupMap();
+                var curFullPolyline = [];
+                var curPrePolyline = [];
+                var curPostPolyline = [];
+                var curMapboxPolyline = null;
+                var curMapboxPrePolyline = null;
+                var curMapboxPostPolyline = null;
+                var curInputMode = 0;
+
+                function disableDrawLine() {
+                    map.pm.addControls({
+                        drawPolyline: false,
+                    });
+                }
+
+                function enableDrawLine() {
+                    map.pm.addControls({
+                        drawPolyline: true,
+                    });
+                }
+
+                function syncPolyline() {
+                    if (curMapboxPolyline) {
+                        curFullPolyline = curMapboxPolyline.getLatLngs().map(function (item) {
+                            return [item.lat, item.lng];
+                        });
+                    } else {
+                        curFullPolyline = [];
+                    }
+                }
+
+                function onPmEdit() {
+                    syncPolyline();
+                    render();
+                }
+
+                function onPmCreate(e) {
+                    curMapboxPolyline = e.layer;
+                    curMapboxPolyline.on('pm:edit', onPmEdit);
+                    disableDrawLine();
+                    syncPolyline();
+                    render();
+                }
+
+                function onPmRemove(e) {
+                    curMapboxPolyline.off('pm:edit', onPmEdit);
+                    curMapboxPolyline = null;
+                    enableDrawLine();
+                    syncPolyline();
+                    render();
+                }
+
+                function onInput(e) {
+                    const val = e.target.value.trim();
+                    if (val === '') {
+                        if (curMapboxPolyline) {
+                            map.removeLayer(curMapboxPolyline);
+                        }
+                        enableDrawLine();
+                    } else {
+                        try {
+                            switch (curInputMode) {
+                                case 0:
+                                    curFullPolyline = polyline.decode(val);
+                                    break;
+                                case 1:
+                                    curFullPolyline = JSON.parse(val);
+                                    break;
+                                case 2:
+                                    curFullPolyline = JSON.parse(val).map(function (item) {
+                                        return [item[1], item[0]];
+                                    });
+                                    break;
+                            }
+                            if (!curMapboxPolyline) {
+                                curMapboxPolyline = L.polyline(curFullPolyline, {
+                                    color: 'blue',
+                                    weight: 5,
+                                }).addTo(map);
+                                curMapboxPolyline.on('pm:edit', onPmEdit);
+                                map.fitBounds(curMapboxPolyline.getBounds());
+                                disableDrawLine();
+                            } else {
+                                curMapboxPolyline.setLatLngs(curFullPolyline.map(item => {
+                                    return new L.LatLng(item[0], item[1]);
+                                }));
+                                map.fitBounds(curMapboxPolyline.getBounds());
+                            }
+                            errOut.innerHTML = '';
+                        } catch (err) {
+                            errOut.innerHTML = err.message;
+                        }
+                    }
+                }
+
+                function onPreInput(e) {
+                    const val = e.target.value.trim();
+                    if (val === '') {
+                        if (curMapboxPrePolyline) {
+                            map.removeLayer(curMapboxPrePolyline);
+                        }
+                    } else {
+                        try {
+                            switch (curInputMode) {
+                                case 0:
+                                    curPrePolyline = polyline.decode(val);
+                                    break;
+                                case 1:
+                                    curPrePolyline = JSON.parse(val);
+                                    break;
+                                case 2:
+                                    curPrePolyline = JSON.parse(val).map(function (item) {
+                                        return [item[1], item[0]];
+                                    });
+                                    break;
+                            }
+                            if (!curMapboxPrePolyline) {
+                                curMapboxPrePolyline = L.polyline(curPrePolyline, {
+                                    color: 'red',
+                                    weight: 5,
+                                }).addTo(map);
+                            } else {
+                                curMapboxPrePolyline.setLatLngs(curPrePolyline.map(item => {
+                                    return new L.LatLng(item[0], item[1]);
+                                }));
+                            }
+                            errOut.innerHTML = '';
+                        } catch (err) {
+                            errOut.innerHTML = err.message;
+                        }
+                    }
+                }
+
+                function onPostInput(e) {
+                    const val = e.target.value.trim();
+                    if (val === '') {
+                        if (curMapboxPostPolyline) {
+                            map.removeLayer(curMapboxPostPolyline);
+                        }
+                    } else {
+                        try {
+                            switch (curInputMode) {
+                                case 0:
+                                    curPostPolyline = polyline.decode(val);
+                                    break;
+                                case 1:
+                                    curPostPolyline = JSON.parse(val);
+                                    break;
+                                case 2:
+                                    curPostPolyline = JSON.parse(val).map(function (item) {
+                                        return [item[1], item[0]];
+                                    });
+                                    break;
+                            }
+                            if (!curMapboxPostPolyline) {
+                                curMapboxPostPolyline = L.polyline(curPostPolyline, {
+                                    color: 'green',
+                                    weight: 5,
+                                }).addTo(map);
+                            } else {
+                                curMapboxPostPolyline.setLatLngs(curPostPolyline.map(item => {
+                                    return new L.LatLng(item[0], item[1]);
+                                }));
+                            }
+                            errOut.innerHTML = '';
+                        } catch (err) {
+                            errOut.innerHTML = err.message;
+                        }
+                    }
+                }
+
+                map.on('pm:create', onPmCreate);
+                map.on('pm:remove', onPmRemove);
+                io.oninput = onInput;
+                ioPre.oninput = onPreInput;
+                ioPost.oninput = onPostInput;
+
+                function setCurPolyline(encp) {
+                    curInputMode = 0;
+                    onInput({
+                        target: {
+                            value: encp,
+                        },
+                    });
+                    render();
+                    return false;
+                }
+
+                function render() {
+                    let val = '';
+                    switch (curInputMode) {
+                        case 0:
+                            val = polyline.encode(curFullPolyline);
+                            break;
+                        case 1:
+                            val = JSON.stringify(curFullPolyline, null, 2);
+                            break;
+                        case 2:
+                            val = JSON.stringify(curFullPolyline.map(function (item) {
+                                return [item[1], item[0]];
+                            }), null, 2);
+                            break;
+                    }
+                    if (io.value !== val) {
+                        io.value = val;
+                    }
+
+                    const tags = document.getElementsByClassName('tab');
+                    for (var i = 0; i < tags.length; i++) {
+                        if (i === curInputMode) {
+                            tags[i].classList.add('active');
+                        } else {
+                            tags[i].classList.remove('active');
+                        }
+                    }
+
+                    return false;
+                }
+
+                function setDisplay(str) {
+                    const selectionStart = io.selectionStart;
+                    const selectionEnd = io.selectionEnd;
+                    console.log(selectionStart, selectionEnd)
+                    io.value = str;
+                    io.setSelectionRange(selectionStart, selectionEnd);
+                }
+
+                function changeCurInputMode(displayType) {
+                    curInputMode = displayType;
+                    render();
+                    return false;
+                }
+            </script>
+        </main>
+    </body>
+</html>
